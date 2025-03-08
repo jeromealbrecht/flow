@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Download, Gift, Music, Share2, Trophy, Users } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -19,8 +19,16 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { logOut } from "@/lib/firebase/auth";
+import { useRouter } from "next/navigation";
+import { useAdmin } from "@/hooks/useAdmin";
+import { auth } from "@/lib/firebase/auth";
+import { onAuthStateChanged } from "firebase/auth";
 
 export default function Studio() {
+  const router = useRouter();
+  const { isAdmin } = useAdmin();
+  const [userName, setUserName] = useState<string | null>(null);
   const [progress, setProgress] = useState(65);
   const [referralCode, setReferralCode] = useState("STUDIO-JOHN-2023");
 
@@ -42,6 +50,31 @@ export default function Studio() {
   const currentReward = rewards.find((reward) => reward.current);
   const nextReward = rewards[rewards.findIndex((reward) => reward.current) + 1];
 
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setUserName(user.displayName || user.email || "Utilisateur");
+      } else {
+        router.push("/");
+      }
+    });
+
+    return () => unsubscribe();
+  }, [router]);
+
+  const handleLogout = async () => {
+    try {
+      setUserName(null);
+      await logOut();
+    } catch (error) {
+      console.error("Erreur lors de la déconnexion:", error);
+    }
+  };
+
+  if (!userName) {
+    return null;
+  }
+
   return (
     <div className="container mx-auto p-4 md:p-6 space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
@@ -51,13 +84,28 @@ export default function Studio() {
             <AvatarFallback>JD</AvatarFallback>
           </Avatar>
           <div>
-            <h1 className="text-2xl font-bold">Studio Dashboard</h1>
-            <p className="text-muted-foreground">Welcome back, John Doe</p>
+            <h1 className="text-2xl font-bold">Bienvenue, {userName}</h1>
+            <div className="flex items-center gap-2 mt-2">
+              {isAdmin && (
+                <>
+                  <Badge variant="secondary">Administrateur</Badge>
+                  <Button
+                    variant="link"
+                    onClick={() => router.push("/studio/admin")}
+                    className="p-0 h-auto font-normal"
+                  >
+                    Accéder au panneau d&apos;administration
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-4">
           <ThemeToggle />
-          <Button>Book a Session</Button>
+          <Button variant="destructive" onClick={handleLogout}>
+            Se déconnecter
+          </Button>
         </div>
       </div>
 
