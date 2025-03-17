@@ -42,3 +42,4 @@ next-env.d.ts
 pnpm-lock.yaml
 package.json
 src/lib/firebase/config.ts
+package-lock.json
