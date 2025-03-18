@@ -244,19 +244,27 @@ export default function Studio() {
                   recordings.map((recording) => (
                     <div
                       key={recording.id}
-                      className="flex items-center justify-between p-3 border rounded-lg"
+                      className="flex flex-col space-y-2 p-3 border rounded-lg"
                     >
-                      <div>
-                        <h3 className="font-medium">{recording.title}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Enregistré le{" "}
-                          {recording.createdAt.toLocaleDateString()}
-                        </p>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="font-medium">{recording.title}</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Enregistré le{" "}
+                            {recording.createdAt.toLocaleDateString()}
+                          </p>
+                        </div>
+                        <Button variant="outline" size="sm" className="gap-1">
+                          <Download className="h-4 w-4" />
+                          Télécharger
+                        </Button>
                       </div>
-                      <Button variant="outline" size="sm" className="gap-1">
-                        <Download className="h-4 w-4" />
-                        Télécharger
-                      </Button>
+                      {recording.audioUrl && (
+                        <audio controls className="w-full">
+                          <source src={recording.audioUrl} type="audio/mpeg" />
+                          Votre navigateur ne supporte pas la lecture audio
+                        </audio>
+                      )}
                     </div>
                   ))
                 )}
