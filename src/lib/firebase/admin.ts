@@ -16,6 +16,7 @@ export interface Recording {
   title: string;
   createdAt: Date;
   status: "draft" | "published";
+  audioUrl?: string;
 }
 
 export interface UserRole {
