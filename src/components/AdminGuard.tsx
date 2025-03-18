@@ -1,26 +1,48 @@
 "use client";
 
-import { useAdmin } from "@/hooks/useAdmin";
+// import { useAdmin } from "@/hooks/useAdmin";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+// import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
 
 export function AdminGuard({ children }: { children: React.ReactNode }) {
-  const { isAdmin, loading } = useAdmin();
+  // const { isAdmin, loading } = useAdmin();
   const router = useRouter();
+  // const [canRender, setCanRender] = useState(false);
 
-  useEffect(() => {
-    if (!loading && !isAdmin) {
-      router.push("/studio");
-    }
-  }, [isAdmin, loading, router]);
+  // console.log("isAdmin", isAdmin);
 
-  if (loading) {
-    return <div>Chargement...</div>;
-  }
+  // useEffect(() => {
+  //   const checkAdmin = async () => {
+  //     if (!loading) {
+  //       if (!isAdmin) {
+  //         router.push("/");
+  //       } else {
+  //         setCanRender(true);
+  //       }
+  //     }
+  //   };
 
-  if (!isAdmin) {
-    return null;
-  }
+  //   checkAdmin();
+  // }, [isAdmin, loading, router]);
 
-  return <>{children}</>;
+  // if (loading || !canRender) {
+  //   return <div>Chargement...</div>;
+  // }
+
+  return (
+    <div className="relative">
+      <Button
+        variant="ghost"
+        size="sm"
+        className="absolute left-4 top-4"
+        onClick={() => router.push("/studio")}
+      >
+        <ArrowLeft className="mr-2 h-4 w-4" />
+        Retour au studio
+      </Button>
+      {children}
+    </div>
+  );
 }

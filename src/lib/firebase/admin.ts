@@ -11,6 +11,13 @@ import { User } from "firebase/auth";
 
 const db = getFirestore(app);
 
+export interface Recording {
+  id: string;
+  title: string;
+  createdAt: Date;
+  status: "draft" | "published";
+}
+
 export interface UserRole {
   isAdmin: boolean;
   roles: string[];
@@ -19,6 +26,7 @@ export interface UserRole {
   photoURL: string | null;
   lastLogin: Date;
   uid?: string;
+  recordings?: Recording[];
 }
 
 export const getUserRoles = async (user: User): Promise<UserRole> => {
@@ -32,6 +40,32 @@ export const getUserRoles = async (user: User): Promise<UserRole> => {
     // Si le document existe, on le retourne
     if (userDoc.exists()) {
       const data = userDoc.data();
+      // Si recordings n'existe pas, on crée un enregistrement par défaut
+      if (!data.recordings) {
+        const defaultRecording: Recording = {
+          id: "default",
+          title: "Pas encore de titre enregistré",
+          createdAt: new Date(),
+          status: "draft",
+        };
+
+        await setDoc(doc(db, "users", user.uid), {
+          ...data,
+          recordings: [defaultRecording],
+        });
+
+        return {
+          isAdmin: data.isAdmin ?? false,
+          roles: data.roles ?? [],
+          email: data.email ?? user.email ?? "",
+          displayName: data.displayName ?? user.displayName,
+          photoURL: data.photoURL ?? user.photoURL,
+          lastLogin: data.lastLogin ? data.lastLogin.toDate() : new Date(),
+          uid: user.uid,
+          recordings: [defaultRecording],
+        };
+      }
+
       return {
         isAdmin: data.isAdmin ?? false,
         roles: data.roles ?? [],
@@ -40,11 +74,25 @@ export const getUserRoles = async (user: User): Promise<UserRole> => {
         photoURL: data.photoURL ?? user.photoURL,
         lastLogin: data.lastLogin ? data.lastLogin.toDate() : new Date(),
         uid: user.uid,
+        recordings: data.recordings
+          ? data.recordings.map((rec: Recording) => ({
+              ...rec,
+              createdAt:
+                rec.createdAt instanceof Date ? rec.createdAt : new Date(),
+            }))
+          : [],
       };
     }
 
     // Si c'est le premier utilisateur admin, on crée son document
     if (user.uid === "mKElDoMiVoVuY4P8VEetkwqj5jB2") {
+      const defaultRecording: Recording = {
+        id: "default",
+        title: "Pas encore de titre enregistré",
+        createdAt: new Date(),
+        status: "draft",
+      };
+
       const newUserData: UserRole = {
         isAdmin: true,
         roles: ["admin"],
@@ -53,12 +101,13 @@ export const getUserRoles = async (user: User): Promise<UserRole> => {
         photoURL: user.photoURL,
         lastLogin: new Date(),
         uid: user.uid,
+        recordings: [defaultRecording],
       };
 
       try {
         await setDoc(doc(db, "users", user.uid), {
           ...newUserData,
-          lastLogin: new Date(), // Firestore Timestamp
+          lastLogin: new Date(),
         });
         return newUserData;
       } catch (error) {
@@ -68,6 +117,13 @@ export const getUserRoles = async (user: User): Promise<UserRole> => {
     }
 
     // Pour les autres utilisateurs, on crée un document standard
+    const defaultRecording: Recording = {
+      id: "default",
+      title: "Pas encore de titre enregistré",
+      createdAt: new Date(),
+      status: "draft",
+    };
+
     const newUserData: UserRole = {
       isAdmin: false,
       roles: [],
@@ -76,12 +132,13 @@ export const getUserRoles = async (user: User): Promise<UserRole> => {
       photoURL: user.photoURL,
       lastLogin: new Date(),
       uid: user.uid,
+      recordings: [defaultRecording],
     };
 
     try {
       await setDoc(doc(db, "users", user.uid), {
         ...newUserData,
-        lastLogin: new Date(), // Firestore Timestamp
+        lastLogin: new Date(),
       });
       return newUserData;
     } catch (error) {
@@ -89,12 +146,10 @@ export const getUserRoles = async (user: User): Promise<UserRole> => {
         "Erreur lors de la création du document utilisateur:",
         error
       );
-      // En cas d'erreur de permission, on retourne un objet par défaut
       return newUserData;
     }
   } catch (error) {
     console.error("Erreur lors de la récupération des rôles:", error);
-    // En cas d'erreur, on retourne un objet par défaut avec les informations de base
     return {
       isAdmin: false,
       roles: [],
@@ -103,6 +158,7 @@ export const getUserRoles = async (user: User): Promise<UserRole> => {
       photoURL: user.photoURL,
       lastLogin: new Date(),
       uid: user.uid,
+      recordings: [],
     };
   }
 };

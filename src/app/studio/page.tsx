@@ -24,22 +24,30 @@ import { useRouter } from "next/navigation";
 import { useAdmin } from "@/hooks/useAdmin";
 import { auth } from "@/lib/firebase/auth";
 import { onAuthStateChanged } from "firebase/auth";
+import { getUserRoles, type Recording } from "@/lib/firebase/admin";
 
 export default function Studio() {
   const router = useRouter();
   const { isAdmin } = useAdmin();
   const [userName, setUserName] = useState<string | null>(null);
+  const [userInitials, setUserInitials] = useState<string>("");
   const [progress, setProgress] = useState(65);
   const [referralCode, setReferralCode] = useState("STUDIO-JOHN-2023");
+  const [recordings, setRecordings] = useState<Recording[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fonction pour compter les vrais enregistrements
+  const getRealRecordingsCount = () => {
+    if (recordings.length === 0) return 0;
+    if (
+      recordings.length === 1 &&
+      recordings[0].title === "Pas encore de titre enregistré"
+    )
+      return 0;
+    return recordings.length;
+  };
 
   // Mock data (same as before)
-  const recordings = [
-    { id: 1, title: "Summer Vibes", date: "2023-10-15", downloadUrl: "#" },
-    { id: 2, title: "Midnight Dreams", date: "2023-11-02", downloadUrl: "#" },
-    { id: 3, title: "Urban Flow", date: "2023-12-10", downloadUrl: "#" },
-    { id: 4, title: "Acoustic Session", date: "2024-01-05", downloadUrl: "#" },
-  ];
-
   const rewards = [
     { level: "Bronze", discount: "5%", threshold: 5, current: true },
     { level: "Silver", discount: "10%", threshold: 10, current: false },
@@ -51,9 +59,34 @@ export default function Studio() {
   const nextReward = rewards[rewards.findIndex((reward) => reward.current) + 1];
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        setUserName(user.displayName || user.email || "Utilisateur");
+        const name = user.displayName || user.email || "Utilisateur";
+        setUserName(name);
+
+        // Création des initiales
+        if (user.displayName) {
+          const initials = user.displayName
+            .split(" ")
+            .map((n) => n[0])
+            .join("")
+            .toUpperCase();
+          setUserInitials(initials);
+        } else {
+          setUserInitials(user.email?.[0].toUpperCase() || "U");
+        }
+
+        // Récupération des enregistrements
+        try {
+          const userData = await getUserRoles(user);
+          setRecordings(userData.recordings || []);
+        } catch (error) {
+          console.error(
+            "Erreur lors de la récupération des enregistrements:",
+            error
+          );
+        }
+        setLoading(false);
       } else {
         router.push("/");
       }
@@ -81,10 +114,11 @@ export default function Studio() {
         <div className="flex items-center gap-4">
           <Avatar className="h-16 w-16">
             <AvatarImage src="/placeholder.svg?height=64&width=64" alt="User" />
-            <AvatarFallback>JD</AvatarFallback>
+            <AvatarFallback>{userInitials}</AvatarFallback>
           </Avatar>
           <div>
-            <h1 className="text-2xl font-bold">Bienvenue, {userName}</h1>
+            <h1 className="text-2xl font-bold">Studio Dashboard</h1>
+            <p className="text-muted-foreground">Welcome back, {userName}</p>
             <div className="flex items-center gap-2 mt-2">
               {isAdmin && (
                 <>
@@ -113,20 +147,22 @@ export default function Studio() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">
-              Recorded Titles
+              Titres enregistrés
             </CardTitle>
             <CardDescription>
-              Total tracks recorded at our studio
+              Nombre total de titres enregistrés
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Music className="h-5 w-5 text-primary" />
-                <span className="text-2xl font-bold">{recordings.length}</span>
+                <span className="text-2xl font-bold">
+                  {getRealRecordingsCount()}
+                </span>
               </div>
               <Badge variant="outline" className="bg-primary/10">
-                +1 this month
+                {getRealRecordingsCount() > 0 ? "+1 ce mois" : "Aucun titre"}
               </Badge>
             </div>
           </CardContent>
@@ -177,65 +213,94 @@ export default function Studio() {
 
       <Tabs defaultValue="recordings" className="w-full">
         <TabsList className="grid grid-cols-3 mb-6">
-          <TabsTrigger value="recordings">Your Recordings</TabsTrigger>
-          <TabsTrigger value="rewards">Rewards Program</TabsTrigger>
-          <TabsTrigger value="referrals">Referral System</TabsTrigger>
+          <TabsTrigger value="recordings">Vos enregistrements</TabsTrigger>
+          <TabsTrigger value="rewards">Programme de fidélité</TabsTrigger>
+          <TabsTrigger value="referrals">Système de parrainage</TabsTrigger>
         </TabsList>
 
         <TabsContent value="recordings" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Your Recorded Titles</CardTitle>
-              <CardDescription>Download your mixing files</CardDescription>
+              <CardTitle>Vos titres enregistrés</CardTitle>
+              <CardDescription>
+                Téléchargez vos fichiers de mixage
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {recordings.map((recording) => (
-                  <div
-                    key={recording.id}
-                    className="flex items-center justify-between p-3 border rounded-lg"
-                  >
-                    <div>
-                      <h3 className="font-medium">{recording.title}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Recorded on {recording.date}
-                      </p>
-                    </div>
-                    <Button variant="outline" size="sm" className="gap-1">
-                      <Download className="h-4 w-4" />
-                      Download Mix
-                    </Button>
+                {recordings.length === 1 &&
+                recordings[0].title === "Pas encore de titre enregistré" ? (
+                  <div className="flex flex-col items-center justify-center p-8 text-center">
+                    <Music className="h-12 w-12 text-muted-foreground mb-4" />
+                    <h3 className="font-medium text-lg mb-2">
+                      Aucun titre enregistré
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Commencez à enregistrer pour voir vos titres apparaître
+                      ici
+                    </p>
                   </div>
-                ))}
+                ) : (
+                  recordings.map((recording) => (
+                    <div
+                      key={recording.id}
+                      className="flex items-center justify-between p-3 border rounded-lg"
+                    >
+                      <div>
+                        <h3 className="font-medium">{recording.title}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Enregistré le{" "}
+                          {recording.createdAt.toLocaleDateString()}
+                        </p>
+                      </div>
+                      <Button variant="outline" size="sm" className="gap-1">
+                        <Download className="h-4 w-4" />
+                        Télécharger
+                      </Button>
+                    </div>
+                  ))
+                )}
               </div>
             </CardContent>
-            <CardFooter>
-              <Button variant="outline" className="w-full">
-                View All Recordings
-              </Button>
-            </CardFooter>
+            {!(
+              recordings.length === 1 &&
+              recordings[0].title === "Pas encore de titre enregistré"
+            ) && (
+              <CardFooter>
+                <Button variant="outline" className="w-full">
+                  Voir tous les enregistrements
+                </Button>
+              </CardFooter>
+            )}
           </Card>
         </TabsContent>
 
         <TabsContent value="rewards" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Rewards Program</CardTitle>
+              <CardTitle>Programme de fidélité</CardTitle>
               <CardDescription>
-                Track your progress towards the next reward level
+                Suivez votre progression vers le prochain niveau
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-sm font-medium">
-                    Progress to {nextReward?.level}
+                    Progression vers {nextReward?.level}
                   </span>
                   <span className="text-sm text-muted-foreground">
-                    {recordings.length}/{nextReward?.threshold} recordings
+                    {getRealRecordingsCount()}/{nextReward?.threshold}{" "}
+                    enregistrements
                   </span>
                 </div>
-                <Progress value={progress} className="h-2" />
+                <Progress
+                  value={
+                    (getRealRecordingsCount() / (nextReward?.threshold || 1)) *
+                    100
+                  }
+                  className="h-2"
+                />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -273,8 +338,8 @@ export default function Studio() {
             </CardContent>
             <CardFooter>
               <p className="text-sm text-muted-foreground">
-                Record {nextReward?.threshold - recordings.length} more titles
-                to reach {nextReward?.level} level and get{" "}
+                Record {nextReward?.threshold - getRealRecordingsCount()} more
+                titles to reach {nextReward?.level} level and get{" "}
                 {nextReward?.discount} off your next session!
               </p>
             </CardFooter>
