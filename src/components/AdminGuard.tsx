@@ -2,34 +2,28 @@
 
 // import { useAdmin } from "@/hooks/useAdmin";
 import { useRouter } from "next/navigation";
-// import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
+import { useEffect, useState } from "react";
 
 export function AdminGuard({ children }: { children: React.ReactNode }) {
-  // const { isAdmin, loading } = useAdmin();
   const router = useRouter();
-  // const [canRender, setCanRender] = useState(false);
+  const [canRender, setCanRender] = useState(false);
 
-  // console.log("isAdmin", isAdmin);
+  // Version simplifiée pour test
+  const isAdmin = true; // Forcé à true pour test
 
-  // useEffect(() => {
-  //   const checkAdmin = async () => {
-  //     if (!loading) {
-  //       if (!isAdmin) {
-  //         router.push("/");
-  //       } else {
-  //         setCanRender(true);
-  //       }
-  //     }
-  //   };
+  useEffect(() => {
+    if (!isAdmin) {
+      router.push("/");
+    } else {
+      setCanRender(true);
+    }
+  }, [router]);
 
-  //   checkAdmin();
-  // }, [isAdmin, loading, router]);
-
-  // if (loading || !canRender) {
-  //   return <div>Chargement...</div>;
-  // }
+  if (!canRender) {
+    return <div>Vérification des droits...</div>;
+  }
 
   return (
     <div className="relative">
