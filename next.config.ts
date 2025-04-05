@@ -1,21 +1,21 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  reactStrictMode: true,
   images: {
-    domains: ["images.unsplash.com"], // Ajoute le domaine Unsplash
+    domains: ["firebasestorage.googleapis.com", "lh3.googleusercontent.com"],
   },
   async headers() {
     return [
       {
-        source: "/(.*)", // Applique à toutes les routes
+        source: "/(.*)",
         headers: [
           {
             key: "Cross-Origin-Opener-Policy",
-            value: "same-origin-allow-popups", // Permet l'ouverture des popups
+            value: "same-origin-allow-popups",
           },
           {
             key: "Cross-Origin-Embedder-Policy",
-            value: "credentialless", // Option pour éviter les blocages
+            value: "credentialless",
           },
         ],
       },
