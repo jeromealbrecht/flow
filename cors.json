@@ -2,8 +2,8 @@
     {
         "origin": [
             "http://localhost:3000",
-            "https://cdson-24c90.web.app",
-            "https://cdson-24c90.firebaseapp.com"
+            "https://studiosmart-aa6cf.web.app",
+            "https://studiosmart-aa6cf.firebaseapp.com"
         ],
         "method": [
             "GET",
