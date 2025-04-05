@@ -1,240 +1,217 @@
-"use client";
-
-import { AdminGuard } from "@/components/AdminGuard";
-import { useEffect, useState, useRef } from "react";
 import {
-  getAllUsers,
-  updateUserRole,
-  UserRole,
-  Recording,
-} from "@/lib/firebase/admin";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Music, Loader2 } from "lucide-react";
-import { updateDoc, doc, getFirestore } from "firebase/firestore";
-import { v4 as uuidv4 } from "uuid";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Separator } from "@/components/ui/separator";
 
-export default function AdminPage() {
-  const [users, setUsers] = useState<UserRole[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedUser, setSelectedUser] = useState<UserRole | null>(null);
-  const [uploadingUserId, setUploadingUserId] = useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = useState<number>(0);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const db = getFirestore();
-
-  useEffect(() => {
-    loadUsers();
-  }, []);
-
-  const loadUsers = async () => {
-    try {
-      const allUsers = await getAllUsers();
-      setUsers(allUsers);
-      setError(null);
-    } catch (err) {
-      setError("Erreur lors du chargement des utilisateurs");
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAdminToggle = async (userId: string, newStatus: boolean) => {
-    try {
-      await updateUserRole(userId, newStatus);
-      await loadUsers(); // Recharger la liste après la mise à jour
-    } catch (err) {
-      console.error("Erreur lors de la mise à jour du rôle:", err);
-      setError("Erreur lors de la mise à jour du rôle");
-    }
-  };
-
-  const handleUploadClick = (user: UserRole) => {
-    setSelectedUser(user);
-    fileInputRef.current?.click();
-  };
-
-  const handleFileUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = event.target.files?.[0];
-    if (!file || !selectedUser?.uid) return;
-
-    try {
-      setUploadingUserId(selectedUser.uid);
-      setUploadProgress(0);
-
-      // Au lieu d'uploader directement le fichier, nous allons simuler un upload réussi
-      // et stocker uniquement les métadonnées
-
-      // Génération d'un ID unique pour l'enregistrement
-      const recordingId = uuidv4();
-
-      // Création d'un nouvel enregistrement sans l'URL audio réelle
-      const newRecording: Recording = {
-        id: recordingId,
-        title: file.name.replace(/\.[^/.]+$/, ""), // Enlever l'extension
-        createdAt: new Date(),
-        status: "published",
-        // On simule une URL audio (ce sera ajouté ultérieurement via Firebase Console)
-        audioUrl: `https://firebasestorage.googleapis.com/v0/b/cdson-24c90.appspot.com/o/audio%2F${
-          selectedUser.uid
-        }%2F${recordingId}_${encodeURIComponent(file.name)}`,
-      };
-
-      // Simulation de progression d'upload
-      setUploadProgress(50);
-
-      // Vérifier si l'utilisateur a déjà des enregistrements
-      let userRecordings = selectedUser.recordings || [];
-
-      // Si c'est juste l'enregistrement par défaut, on le remplace
-      if (
-        userRecordings.length === 1 &&
-        userRecordings[0].title === "Pas encore de titre enregistré"
-      ) {
-        userRecordings = [newRecording];
-      } else {
-        // Sinon on ajoute le nouvel enregistrement
-        userRecordings = [...userRecordings, newRecording];
-      }
-
-      // Mettre à jour le document utilisateur
-      await updateDoc(doc(db, "users", selectedUser.uid), {
-        recordings: userRecordings,
-      });
-
-      // Recharger les utilisateurs
-      await loadUsers();
-
-      setUploadProgress(100);
-      setTimeout(() => {
-        setUploadingUserId(null);
-        setUploadProgress(0);
-      }, 1000);
-    } catch (err) {
-      console.error("Erreur lors de l'upload du fichier:", err);
-      setError("Erreur lors de l'upload du fichier");
-      setUploadingUserId(null);
-    }
-
-    // Réinitialiser l'input file
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  };
-
-  if (loading) {
-    return (
-      <AdminGuard>
-        <div className="p-8">
-          <h1 className="text-2xl font-bold mb-4">Administration</h1>
-          <p>Chargement...</p>
-        </div>
-      </AdminGuard>
-    );
-  }
-
+export default function AdminProfilePage() {
   return (
-    <AdminGuard>
-      <div className="p-8">
-        <h1 className="text-2xl font-bold mb-4">Administration</h1>
-
-        {error && (
-          <div className="bg-destructive/10 text-destructive p-4 rounded-lg mb-4">
-            {error}
-          </div>
-        )}
-
-        <input
-          type="file"
-          ref={fileInputRef}
-          className="hidden"
-          accept="audio/*"
-          onChange={handleFileUpload}
-        />
-
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Utilisateur</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Dernière connexion</TableHead>
-                <TableHead>Enregistrements</TableHead>
-                <TableHead>Statut</TableHead>
-                <TableHead>Admin</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users.map((user) => (
-                <TableRow key={user.uid}>
-                  <TableCell className="font-medium">
-                    {user.displayName || "Sans nom"}
-                  </TableCell>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell>{user.lastLogin.toLocaleDateString()}</TableCell>
-                  <TableCell>
-                    {user.recordings &&
-                    user.recordings.length === 1 &&
-                    user.recordings[0].title ===
-                      "Pas encore de titre enregistré"
-                      ? "0"
-                      : user.recordings?.length || "0"}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={user.isAdmin ? "default" : "secondary"}>
-                      {user.isAdmin ? "Admin" : "Utilisateur"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Switch
-                      checked={user.isAdmin}
-                      onCheckedChange={(checked) =>
-                        user.uid && handleAdminToggle(user.uid, checked)
-                      }
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex items-center gap-1"
-                      onClick={() => handleUploadClick(user)}
-                      disabled={uploadingUserId === user.uid}
-                    >
-                      {uploadingUserId === user.uid ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          {uploadProgress}%
-                        </>
-                      ) : (
-                        <>
-                          <Music className="h-4 w-4" />
-                          Ajouter une piste
-                        </>
-                      )}
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+    <div className="p-6">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold">My Profile</h1>
+        <p className="text-muted-foreground">Manage your account settings</p>
       </div>
-    </AdminGuard>
+
+      <div className="grid gap-6 md:grid-cols-[300px_1fr]">
+        <Card>
+          <CardHeader>
+            <CardTitle>Profile</CardTitle>
+            <CardDescription>Your personal information</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center">
+            <Avatar className="h-24 w-24 mb-4">
+              <AvatarImage
+                src="/placeholder.svg?height=96&width=96"
+                alt="Profile"
+              />
+              <AvatarFallback>AD</AvatarFallback>
+            </Avatar>
+            <h3 className="text-xl font-medium">Admin User</h3>
+            <p className="text-sm text-muted-foreground">admin@example.com</p>
+            <div className="mt-2 text-sm text-muted-foreground">
+              <p>Administrator</p>
+              <p>Member since: Jan 2023</p>
+            </div>
+          </CardContent>
+          <CardFooter>
+            <Button variant="outline" className="w-full">
+              Change Avatar
+            </Button>
+          </CardFooter>
+        </Card>
+
+        <Tabs defaultValue="account">
+          <TabsList className="mb-4">
+            <TabsTrigger value="account">Account</TabsTrigger>
+            <TabsTrigger value="security">Security</TabsTrigger>
+            <TabsTrigger value="notifications">Notifications</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="account">
+            <Card>
+              <CardHeader>
+                <CardTitle>Account Information</CardTitle>
+                <CardDescription>Update your account details</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="firstName">First name</Label>
+                    <Input id="firstName" defaultValue="Admin" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lastName">Last name</Label>
+                    <Input id="lastName" defaultValue="User" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    defaultValue="admin@example.com"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="bio">Bio</Label>
+                  <Input
+                    id="bio"
+                    defaultValue="Administrator of the platform"
+                  />
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button>Save Changes</Button>
+              </CardFooter>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="security">
+            <Card>
+              <CardHeader>
+                <CardTitle>Security Settings</CardTitle>
+                <CardDescription>
+                  Manage your password and security preferences
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="currentPassword">Current Password</Label>
+                  <Input id="currentPassword" type="password" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="newPassword">New Password</Label>
+                  <Input id="newPassword" type="password" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">Confirm Password</Label>
+                  <Input id="confirmPassword" type="password" />
+                </div>
+                <Separator />
+                <div className="space-y-2">
+                  <Label>Two-Factor Authentication</Label>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">
+                      Protect your account with 2FA
+                    </span>
+                    <Button variant="outline" size="sm">
+                      Enable
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button>Update Password</Button>
+              </CardFooter>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="notifications">
+            <Card>
+              <CardHeader>
+                <CardTitle>Notification Preferences</CardTitle>
+                <CardDescription>
+                  Manage how you receive notifications
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium">Email Notifications</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Receive email about account activity
+                      </p>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Label htmlFor="email-notifications" className="sr-only">
+                        Toggle email notifications
+                      </Label>
+                      <input
+                        type="checkbox"
+                        id="email-notifications"
+                        defaultChecked
+                        className="h-4 w-4 rounded border-gray-300"
+                      />
+                    </div>
+                  </div>
+                  <Separator />
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium">Push Notifications</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Receive push notifications in browser
+                      </p>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Label htmlFor="push-notifications" className="sr-only">
+                        Toggle push notifications
+                      </Label>
+                      <input
+                        type="checkbox"
+                        id="push-notifications"
+                        className="h-4 w-4 rounded border-gray-300"
+                      />
+                    </div>
+                  </div>
+                  <Separator />
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium">Marketing Emails</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Receive emails about new features
+                      </p>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Label htmlFor="marketing-emails" className="sr-only">
+                        Toggle marketing emails
+                      </Label>
+                      <input
+                        type="checkbox"
+                        id="marketing-emails"
+                        defaultChecked
+                        className="h-4 w-4 rounded border-gray-300"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button>Save Preferences</Button>
+              </CardFooter>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
   );
 }
