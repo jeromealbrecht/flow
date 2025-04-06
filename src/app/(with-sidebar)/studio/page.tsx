@@ -1,29 +1,31 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { UserTable } from "@/components/user-table";
+"use client";
 
-export default function UsersPage() {
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { auth } from "@/lib/firebase/auth";
+import { onAuthStateChanged } from "firebase/auth";
+import AuroraBackground from "@/components/ui/background/aurora";
+
+export default function StudioPage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        router.push("/studio/dashboard");
+      } else {
+        router.push("/");
+      }
+    });
+
+    return () => unsubscribe();
+  }, [router]);
+
   return (
-    <div className="p-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">Users</h1>
-        <p className="text-muted-foreground">Manage your platform users</p>
+    <AuroraBackground>
+      <div className="absolute inset-0 flex justify-center items-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
-
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>User Management</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-4 mb-4">
-            <Input placeholder="Search users..." className="max-w-sm" />
-            <Button>Search</Button>
-            <Button variant="outline">Reset</Button>
-          </div>
-          <UserTable />
-        </CardContent>
-      </Card>
-    </div>
+    </AuroraBackground>
   );
 }
