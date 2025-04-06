@@ -4,18 +4,21 @@ const nextConfig = {
   images: {
     domains: ["firebasestorage.googleapis.com", "lh3.googleusercontent.com"],
   },
+  // Configuration pour l'export statique
+  output: "export",
+  // Désactiver les en-têtes COOP et COEP
   async headers() {
     return [
       {
-        source: "/(.*)",
+        source: "/:path*",
         headers: [
           {
             key: "Cross-Origin-Opener-Policy",
-            value: "same-origin-allow-popups",
+            value: "unsafe-none",
           },
           {
             key: "Cross-Origin-Embedder-Policy",
-            value: "credentialless",
+            value: "unsafe-none",
           },
         ],
       },
