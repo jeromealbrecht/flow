@@ -3,7 +3,7 @@
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Music, Home, Settings, Users } from "lucide-react";
+import { Music, Home, Settings, Users, LayoutDashboard } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -14,16 +14,16 @@ export function SideBar({ className }: SidebarProps) {
 
   const routes = [
     {
-      label: "Accueil",
-      icon: Home,
-      href: "/studio",
-      active: pathname === "/studio",
+      label: "Dashboard",
+      icon: LayoutDashboard,
+      href: "/studio/dashboard",
+      active: pathname === "/studio/dashboard",
     },
     {
-      label: "Enregistrements",
+      label: "Studio",
       icon: Music,
-      href: "/studio/recordings",
-      active: pathname === "/studio/recordings",
+      href: "/studio",
+      active: pathname === "/studio",
     },
     {
       label: "Administration",
