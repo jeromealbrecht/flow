@@ -34,7 +34,8 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     "src/components/ui/apple-cards-carousel.jsx",
-    "src/hook/use-outside-click.js"
+    "src/hook/use-outside-click.js",
+    "next.config.mjs"
   ],
   "exclude": [
     "node_modules"
