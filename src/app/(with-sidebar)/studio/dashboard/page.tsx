@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { auth } from "@/lib/firebase/config";
-import { onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged, User } from "firebase/auth";
 import {
   Card,
   CardContent,
@@ -14,8 +15,14 @@ import {
 import { AdminCheck } from "@/components/AdminCheck";
 import AuroraBackground from "@/components/ui/background/aurora";
 
+interface CustomUser extends User {
+  projects?: number;
+  tasks?: number;
+  notifications?: number;
+}
+
 export default function Dashboard() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<CustomUser | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -55,13 +62,16 @@ export default function Dashboard() {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           <Card className="bg-opacity-80 backdrop-blur-lg">
             <CardHeader>
-              <img
-                src={user.photoURL}
-                alt="Photo de profil"
-                width={50}
-                height={50}
-                className="rounded-full"
-              />
+              <div className="relative w-12 h-12">
+                <Image
+                  src={user.photoURL || "/default-avatar.png"}
+                  alt="Photo de profil"
+                  fill
+                  sizes="48px"
+                  className="rounded-full object-cover"
+                  priority
+                />
+              </div>
               <CardTitle>
                 Bienvenue, {user.displayName || "Utilisateur"}
               </CardTitle>
