@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { auth } from "@/lib/firebase/config";
 import { onAuthStateChanged, User } from "firebase/auth";
 import {
@@ -12,8 +11,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { AdminCheck } from "@/components/AdminCheck";
 import AuroraBackground from "@/components/ui/background/aurora";
+import AudioFrontManagement from "../components/AudioFrontManagement";
 
 interface CustomUser extends User {
   projects?: number;
@@ -62,14 +61,14 @@ export default function Dashboard() {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           <Card className="bg-opacity-80 backdrop-blur-lg">
             <CardHeader>
-              <div className="relative w-12 h-12">
-                <Image
+              <div className="w-12 h-12">
+                <img
                   src={user.photoURL || "/default-avatar.png"}
                   alt="Photo de profil"
-                  fill
-                  sizes="48px"
-                  className="rounded-full object-cover"
-                  priority
+                  width="48"
+                  height="48"
+                  className="rounded-full object-cover w-full h-full"
+                  loading="eager"
                 />
               </div>
               <CardTitle>
@@ -83,7 +82,9 @@ export default function Dashboard() {
               <p>Dernière connexion : {user.metadata.lastSignInTime}</p>
               <button
                 className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-                onClick={() => auth.signOut().then(() => router.push("/"))}
+                onClick={() => {
+                  auth.signOut().then(() => router.push("/"));
+                }}
               >
                 Se déconnecter
               </button>
@@ -124,18 +125,7 @@ export default function Dashboard() {
         </div>
 
         <section className="mt-10 w-full">
-          <Card className="bg-opacity-80 backdrop-blur-lg">
-            <CardHeader>
-              <CardTitle>
-                <h1>Bienvenue sur le dashboard</h1>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col gap-2">
-                <AdminCheck user={user} />
-              </div>
-            </CardContent>
-          </Card>
+          <AudioFrontManagement />
         </section>
       </div>
     </AuroraBackground>

@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { User } from "firebase/auth";
 
-export function AdminCheck({ user }: { user: any }) {
+export function AdminCheck({ user }: { user: User }) {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
