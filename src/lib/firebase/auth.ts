@@ -28,14 +28,15 @@ export const signInWithGoogle = async () => {
       user: result.user,
       success: true,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Erreur d'authentification Google:", error);
 
     // Si l'erreur est liée à la politique COOP, essayer avec la redirection
     if (
-      error.code === "auth/popup-closed-by-user" ||
-      error.code === "auth/popup-blocked" ||
-      error.message.includes("Cross-Origin-Opener-Policy")
+      error instanceof Error &&
+      (error.message === "auth/popup-closed-by-user" ||
+        error.message === "auth/popup-blocked" ||
+        error.message.includes("Cross-Origin-Opener-Policy"))
     ) {
       try {
         // Fallback à la méthode de redirection
@@ -47,7 +48,7 @@ export const signInWithGoogle = async () => {
           success: true,
           redirected: true,
         };
-      } catch (redirectError) {
+      } catch (redirectError: unknown) {
         console.error("Erreur de redirection:", redirectError);
         return {
           success: false,
