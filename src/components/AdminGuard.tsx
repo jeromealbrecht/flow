@@ -5,24 +5,29 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useAdmin } from "@/hooks/useAdmin";
 
 export function AdminGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [canRender, setCanRender] = useState(false);
-
-  // Version simplifiée pour test
-  const isAdmin = true; // Forcé à true pour test
+  const { isAdmin, loading } = useAdmin();
 
   useEffect(() => {
-    if (!isAdmin) {
-      router.push("/");
-    } else {
-      setCanRender(true);
+    if (!loading) {
+      if (!isAdmin) {
+        router.push("/");
+      } else {
+        setCanRender(true);
+      }
     }
-  }, [router]);
+  }, [router, isAdmin, loading]);
+
+  if (loading) {
+    return <div>Vérification des droits...</div>;
+  }
 
   if (!canRender) {
-    return <div>Vérification des droits...</div>;
+    return null;
   }
 
   return (
