@@ -1,0 +1,30 @@
+{
+  "openapi" : "3.0.0",
+  "info" : {
+    "title" : "Mon API locale",
+    "version" : "1.0.0"
+  },
+  "servers" : [ {
+    "url" : "http://localhost:3000/api"
+  } ],
+  "paths" : {
+    "/users" : {
+      "get" : {
+        "summary" : "Liste des utilisateurs",
+        "responses" : { }
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "Schema" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer"
+          }
+        }
+      }
+    }
+  }
+}
