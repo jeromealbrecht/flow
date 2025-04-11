@@ -6,6 +6,7 @@ import {
   createAudio,
   getUsers,
   updateAudio,
+  deleteAudio,
 } from "../hooks/AudioManagement";
 import { Audio } from "../types/audio";
 import { FirestoreUser } from "../types/firestoreUser";
@@ -169,6 +170,7 @@ const AudioFrontManagement = () => {
     });
   };
 
+  // 🔥 Suppression de l'audio
   const handleDeleteAudio = async (audioId: string, audioUrl: string) => {
     const deletePromise = new Promise<string>(async (resolve, reject) => {
       try {
@@ -176,37 +178,65 @@ const AudioFrontManagement = () => {
         const currentUser = auth.currentUser;
 
         if (!currentUser) {
-          throw new Error("Utilisateur non authentifié");
+          throw new Error(
+            "Vous devez être connecté pour effectuer cette action"
+          );
         }
 
         const token = await currentUser.getIdToken();
 
+        // 1. Supprimer le fichier via l'API
         const response = await fetch("/api/delete", {
           method: "DELETE",
           headers: {
             "Content-Type": "application/json",
+            Accept: "application/json",
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ url: audioUrl }),
         });
 
-        const data = await response.json();
-
-        if (!data.success) {
-          throw new Error(data.error || "Erreur lors de la suppression");
+        if (!response.ok) {
+          const contentType = response.headers.get("content-type");
+          if (contentType?.includes("application/json")) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || "Erreur lors de la suppression");
+          } else {
+            const errorText = await response.text();
+            console.error("Réponse non-JSON reçue:", errorText);
+            throw new Error("Erreur serveur inattendue");
+          }
         }
 
-        setAudios(audios.filter((a) => a.id !== audioId));
+        const data = await response.json();
+        if (!data.success) {
+          throw new Error(data.error || "Échec de la suppression");
+        }
+
+        // 2. Supprimer les données dans Firestore
+        const deleteResult = await deleteAudio(audioId);
+        if (!deleteResult.success) {
+          throw new Error(
+            deleteResult.message || "Échec de la suppression dans Firestore"
+          );
+        }
+
+        // 3. Mise à jour de l'état local uniquement si les deux suppressions ont réussi
+        setAudios((prev) => prev.filter((a) => a.id !== audioId));
         resolve("Audio supprimé avec succès");
       } catch (error: unknown) {
-        console.error("Erreur lors de la suppression:", error);
-        reject(error instanceof Error ? error.message : "Erreur inconnue");
+        console.error("Erreur détaillée lors de la suppression:", error);
+        if (error instanceof Error) {
+          reject(error);
+        } else {
+          reject(new Error("Une erreur inattendue est survenue"));
+        }
       }
     });
 
     toast.promise(deletePromise, {
       loading: "Suppression en cours...",
-      success: (message: string) => message as string,
+      success: (message) => message,
       error: (error: Error) => `Erreur: ${error.message}`,
     });
   };
