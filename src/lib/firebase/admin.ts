@@ -93,7 +93,7 @@ export const getUserRoles = async (user: User): Promise<UserRole> => {
         createdAt: new Date(),
         status: "draft",
       };
-
+      // sinon on crée un document admin
       const newUserData: UserRole = {
         isAdmin: true,
         roles: ["admin"],
