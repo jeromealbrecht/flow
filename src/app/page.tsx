@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { GoogleSignIn } from "@/components/GoogleSignIn";
+import { EmailSignIn } from "@/components/EmailSignIn";
 import {
   Card,
   CardContent,
@@ -10,8 +11,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { AuroraBackground } from "@/components/ui/aurora-background";
-import { Button } from "@/components/ui/button";
-import { ArrowRight } from "lucide-react";
 
 export default function LoginPage() {
   const [mounted, setMounted] = useState(false);
@@ -37,7 +36,7 @@ export default function LoginPage() {
           <p className="text-lg text-white/80">Streamline your workflow</p>
         </div>
 
-        <Card className="w-full backdrop-blur-sm bg-white/10 border-white/20 shadow-2xl">
+        <Card className="border-white/20 bg-black/30 backdrop-blur-lg">
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl font-bold text-white">
               Welcome back
@@ -55,18 +54,12 @@ export default function LoginPage() {
               </div>
               <div className="relative flex justify-center text-xs">
                 <span className="bg-black/30 px-2 text-white/60 backdrop-blur-sm rounded-md">
-                  Or continue with
+                  Or continue with email
                 </span>
               </div>
             </div>
 
-            <Button
-              variant="outline"
-              className="w-full bg-white/5 border-white/20 text-white hover:bg-white/10 hover:text-white"
-            >
-              Continue as guest
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
+            <EmailSignIn />
           </CardContent>
         </Card>
 

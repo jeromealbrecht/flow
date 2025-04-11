@@ -20,18 +20,42 @@ interface CustomUser extends User {
   notifications?: number;
 }
 
+interface SQLUser {
+  email: string;
+  displayName?: string;
+  photoURL?: string;
+  isAdmin?: boolean;
+  projects?: number;
+  tasks?: number;
+  notifications?: number;
+}
+
 export default function Dashboard() {
-  const [user, setUser] = useState<CustomUser | null>(null);
+  const [user, setUser] = useState<CustomUser | SQLUser | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (currentUser) {
+        // Utilisateur Firebase
         setUser(currentUser);
-        console.log(currentUser);
+        console.log("Utilisateur Firebase connecté:", currentUser);
       } else {
-        router.push("/");
+        // Vérifier le localStorage pour un utilisateur SQL
+        const storedUser = localStorage.getItem("user");
+        if (storedUser) {
+          try {
+            const sqlUser = JSON.parse(storedUser);
+            setUser(sqlUser);
+            console.log("Utilisateur SQL connecté:", sqlUser);
+          } catch (error) {
+            console.error("Erreur de parsing du localStorage:", error);
+            router.push("/");
+          }
+        } else {
+          router.push("/");
+        }
       }
       setLoading(false);
     });
@@ -43,7 +67,7 @@ export default function Dashboard() {
     return (
       <AuroraBackground>
         <div className="flex justify-center items-center min-h-screen">
-          Chargement...
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
       </AuroraBackground>
     );
@@ -52,6 +76,17 @@ export default function Dashboard() {
   if (!user) {
     return null;
   }
+
+  const handleLogout = async () => {
+    if ("uid" in user) {
+      // Déconnexion Firebase
+      await auth.signOut();
+    } else {
+      // Déconnexion SQL
+      localStorage.removeItem("user");
+    }
+    router.push("/");
+  };
 
   return (
     <AuroraBackground>
@@ -79,12 +114,12 @@ export default function Dashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <p>Dernière connexion : {user.metadata.lastSignInTime}</p>
+              {"metadata" in user && (
+                <p>Dernière connexion : {user.metadata.lastSignInTime}</p>
+              )}
               <button
                 className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-                onClick={() => {
-                  auth.signOut().then(() => router.push("/"));
-                }}
+                onClick={handleLogout}
               >
                 Se déconnecter
               </button>
@@ -97,9 +132,9 @@ export default function Dashboard() {
               <CardDescription>Aperçu de vos activités</CardDescription>
             </CardHeader>
             <CardContent>
-              <p>Projets actifs: {user?.projects}</p>
-              <p>Tâches en attente: {user?.tasks}</p>
-              <p>Notifications: {user?.notifications}</p>
+              <p>Projets actifs: {user?.projects || 0}</p>
+              <p>Tâches en attente: {user?.tasks || 0}</p>
+              <p>Notifications: {user?.notifications || 0}</p>
             </CardContent>
           </Card>
 
