@@ -8,10 +8,6 @@ const client = createClient(process.env.WEBDAV_URL || "", {
 
 export async function POST(request: Request) {
   try {
-    // Log des variables d'environnement (sans les mots de passe)
-    console.log("WEBDAV_URL:", process.env.WEBDAV_URL);
-    console.log("WEBDAV_USERNAME:", process.env.WEBDAV_USERNAME);
-
     const formData = await request.formData();
     const file = formData.get("file") as File;
 
@@ -19,16 +15,10 @@ export async function POST(request: Request) {
       throw new Error("Aucun fichier n'a été fourni");
     }
 
-    console.log("Fichier reçu:", file.name, "Taille:", file.size);
-
     const fileName = `audio/${Date.now()}-${file.name}`;
-    console.log("Nom du fichier cible:", fileName);
 
-    // Convertir le File en Buffer pour l'upload WebDAV
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-
-    console.log("Buffer créé, taille:", buffer.length);
 
     try {
       // Upload vers NextCloud
@@ -36,7 +26,6 @@ export async function POST(request: Request) {
         overwrite: true,
         contentLength: buffer.length,
       });
-      console.log("Upload réussi vers WebDAV");
     } catch (error: unknown) {
       console.error("Erreur lors de l'upload WebDAV:", error);
       const errorMessage =
@@ -49,10 +38,8 @@ export async function POST(request: Request) {
     // Créer un lien de partage public
     const baseUrl = process.env.WEBDAV_URL?.split("/remote.php")[0];
     const shareUrl = `${baseUrl}/ocs/v2.php/apps/files_sharing/api/v1/shares`;
-    console.log("URL de partage:", shareUrl);
 
-    // Construire le chemin complet du fichier
-    const filePath = `/${fileName}`; // Chemin relatif à la racine de l'utilisateur
+    const filePath = `/${fileName}`;
     console.log("Chemin du fichier pour le partage:", filePath);
 
     const shareResponse = await fetch(shareUrl, {
@@ -74,9 +61,7 @@ export async function POST(request: Request) {
       }).toString(),
     });
 
-    console.log("Réponse du partage status:", shareResponse.status);
     const shareResponseText = await shareResponse.text();
-    console.log("Réponse du partage body:", shareResponseText);
 
     if (!shareResponse.ok) {
       throw new Error(
@@ -98,11 +83,8 @@ export async function POST(request: Request) {
       throw new Error("Token de partage non trouvé dans la réponse");
     }
 
-    console.log("Token de partage obtenu:", shareToken);
-
     // Utiliser l'URL de téléchargement directe
     const downloadUrl = `${baseUrl}/index.php/s/${shareToken}/download`;
-    console.log("URL finale:", downloadUrl);
 
     const response = NextResponse.json({ success: true, url: downloadUrl });
 
