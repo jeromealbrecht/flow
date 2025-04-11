@@ -12,7 +12,7 @@ import { FirestoreUser } from "../types/firestoreUser";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Music, Upload, Loader2 } from "lucide-react";
+import { Music, Upload, Loader2, Trash2, Download } from "lucide-react";
 import { toast } from "sonner";
 import {
   Select,
@@ -22,6 +22,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { motion, AnimatePresence } from "framer-motion";
+import { getUserRoles } from "@/lib/firebase/admin";
+import { getAuth } from "firebase/auth";
 
 const AudioFrontManagement = () => {
   const [audios, setAudios] = useState<Audio[]>([]);
@@ -30,6 +32,29 @@ const AudioFrontManagement = () => {
   const [uploading, setUploading] = useState(false);
   const [selectedUser, setSelectedUser] = useState<string>("all");
   const { user } = useAuth();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        console.log("currentUser", currentUser);
+        try {
+          const userRoles = await getUserRoles(currentUser);
+          setIsAdmin(userRoles.isAdmin);
+        } catch (error) {
+          console.error(
+            "Erreur lors de la vérification des droits d'administrateur:",
+            error
+          );
+          // En cas d'erreur de permissions, on considère que l'utilisateur n'est pas admin
+          setIsAdmin(false);
+        }
+      }
+    };
+    checkAdminStatus();
+  }, [user]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -40,6 +65,7 @@ const AudioFrontManagement = () => {
         ]);
         setAudios(fetchedAudios || []);
         setUsers(fetchedUsers || []);
+        console.log("currentUser", fetchedUsers);
       } catch (error: unknown) {
         console.error("Erreur lors du chargement des données:", error);
         toast.error("Impossible de charger les données", {
@@ -143,11 +169,75 @@ const AudioFrontManagement = () => {
     });
   };
 
-  // Filtrer les audios selon l'utilisateur sélectionné
-  const filteredAudios =
-    selectedUser === "all"
-      ? audios
-      : audios.filter((audio) => audio.assignedTo === selectedUser);
+  const handleDeleteAudio = async (audioId: string, audioUrl: string) => {
+    const deletePromise = new Promise<string>(async (resolve, reject) => {
+      try {
+        const auth = getAuth();
+        const currentUser = auth.currentUser;
+
+        if (!currentUser) {
+          throw new Error("Utilisateur non authentifié");
+        }
+
+        const token = await currentUser.getIdToken();
+
+        const response = await fetch("/api/delete", {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ url: audioUrl }),
+        });
+
+        const data = await response.json();
+
+        if (!data.success) {
+          throw new Error(data.error || "Erreur lors de la suppression");
+        }
+
+        setAudios(audios.filter((a) => a.id !== audioId));
+        resolve("Audio supprimé avec succès");
+      } catch (error: unknown) {
+        console.error("Erreur lors de la suppression:", error);
+        reject(error instanceof Error ? error.message : "Erreur inconnue");
+      }
+    });
+
+    toast.promise(deletePromise, {
+      loading: "Suppression en cours...",
+      success: (message: string) => message as string,
+      error: (error: Error) => `Erreur: ${error.message}`,
+    });
+  };
+
+  // Filtrer les audios selon les droits de l'utilisateur
+  const filteredAudios = audios.filter((audio) => {
+    if (isAdmin) {
+      return selectedUser === "all" ? true : audio.assignedTo === selectedUser;
+    } else {
+      // Les utilisateurs non-admin ne voient que leurs audios
+      return audio.assignedTo === user?.id;
+    }
+  });
+
+  const handleDownload = async (audioUrl: string, title: string) => {
+    try {
+      const response = await fetch(audioUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${title}.mp3`; // ou utilisez l'extension appropriée
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error("Erreur lors du téléchargement:", error);
+      toast.error("Erreur lors du téléchargement");
+    }
+  };
 
   if (loading)
     return (
@@ -163,37 +253,45 @@ const AudioFrontManagement = () => {
     <Card className="p-4">
       <CardHeader className="flex flex-row items-center justify-between">
         <div className="flex items-center gap-4">
-          <CardTitle>Gestion des audios</CardTitle>
-          <Select value={selectedUser} onValueChange={setSelectedUser}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Filtrer par utilisateur" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Tous les utilisateurs</SelectItem>
-              {users.map((user) => (
-                <SelectItem key={user.id} value={user.id}>
-                  {user.displayName || user.email || `Utilisateur ${user.id}`}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <CardTitle>
+            {isAdmin
+              ? "Gestion des audios"
+              : "Vos titres mixés au studio Couleur de son"}
+          </CardTitle>
+          {isAdmin && (
+            <Select value={selectedUser} onValueChange={setSelectedUser}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Filtrer par utilisateur" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous les utilisateurs</SelectItem>
+                {users.map((user) => (
+                  <SelectItem key={user.id} value={user.id}>
+                    {user.displayName || user.email || `Utilisateur ${user.id}`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
-        <Button
-          onClick={() => {
-            const input = document.createElement("input");
-            input.type = "file";
-            input.accept = "audio/*";
-            input.onchange = (e) => {
-              const file = (e.target as HTMLInputElement).files?.[0];
-              if (file) handleFileUpload(file);
-            };
-            input.click();
-          }}
-          disabled={uploading}
-        >
-          <Upload className="mr-2 h-4 w-4" />
-          {uploading ? "Upload en cours..." : "Ajouter un audio"}
-        </Button>
+        {isAdmin && (
+          <Button
+            onClick={() => {
+              const input = document.createElement("input");
+              input.type = "file";
+              input.accept = "audio/*";
+              input.onchange = (e) => {
+                const file = (e.target as HTMLInputElement).files?.[0];
+                if (file) handleFileUpload(file);
+              };
+              input.click();
+            }}
+            disabled={uploading}
+          >
+            <Upload className="mr-2 h-4 w-4" />
+            {uploading ? "Upload en cours..." : "Ajouter un audio"}
+          </Button>
+        )}
       </CardHeader>
       <CardContent>
         <AnimatePresence mode="wait">
@@ -206,9 +304,11 @@ const AudioFrontManagement = () => {
             >
               <Music className="mx-auto h-12 w-12 text-muted-foreground/50" />
               <p className="mt-2">
-                {selectedUser === "all"
-                  ? "Aucun audio disponible. Cliquez sur le bouton pour ajouter !"
-                  : "Aucun audio trouvé pour cet utilisateur."}
+                {isAdmin
+                  ? selectedUser === "all"
+                    ? "Aucun audio disponible. Cliquez sur le bouton pour ajouter !"
+                    : "Aucun audio trouvé pour cet utilisateur."
+                  : "Aucun audio ne vous a été assigné."}
               </p>
             </motion.div>
           ) : (
@@ -228,33 +328,71 @@ const AudioFrontManagement = () => {
                 >
                   <Card>
                     <CardHeader className="flex flex-row items-center justify-between">
-                      <CardTitle>{audio.title}</CardTitle>
-                      <Select
-                        value={audio.assignedTo}
-                        onValueChange={(value) =>
-                          handleAssignAudio(audio.id, value)
-                        }
-                      >
-                        <SelectTrigger className="w-[200px]">
-                          <SelectValue placeholder="Attribuer à un utilisateur" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {users.map((user) => (
-                            <SelectItem key={user.id} value={user.id}>
-                              {user.displayName ||
-                                user.email ||
-                                `Utilisateur ${user.id}`}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <div className="flex items-center gap-4">
+                        <CardTitle>{audio.title}</CardTitle>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() =>
+                              handleDownload(audio.audioUrl, audio.title)
+                            }
+                            className="text-primary hover:text-primary hover:bg-primary/10"
+                            title="Télécharger l'audio"
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                          {isAdmin && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() =>
+                                handleDeleteAudio(audio.id, audio.audioUrl)
+                              }
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              title="Supprimer l'audio"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                      {isAdmin ? (
+                        <Select
+                          value={audio.assignedTo}
+                          onValueChange={(value) =>
+                            handleAssignAudio(audio.id, value)
+                          }
+                        >
+                          <SelectTrigger className="w-[200px]">
+                            <SelectValue placeholder="Attribuer à un utilisateur" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {users.map((user) => (
+                              <SelectItem key={user.id} value={user.id}>
+                                {user.displayName ||
+                                  user.email ||
+                                  `Utilisateur ${user.id}`}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <div className="text-sm text-muted-foreground">
+                          Assigné à :{" "}
+                          {users.find((u) => u.id === audio.assignedTo)
+                            ?.displayName ||
+                            users.find((u) => u.id === audio.assignedTo)
+                              ?.email ||
+                            `Utilisateur ${audio.assignedTo}`}
+                        </div>
+                      )}
                     </CardHeader>
                     <CardContent>
                       <audio
                         controls
                         src={audio.audioUrl}
                         preload="metadata"
-                        controlsList="nodownload"
                         className="w-full"
                       >
                         <source src={audio.audioUrl} type="audio/mpeg" />
